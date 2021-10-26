@@ -21,7 +21,6 @@ time.sleep(2.0)
 # cap = cv2.VideoCapture('filename.mp4')
 fps=FPS().start()
 while True:
-    print(fps)
     # Read the frame
     snapshot=vs.read()
     snapshot=imutils.resize(snapshot,width=500)
