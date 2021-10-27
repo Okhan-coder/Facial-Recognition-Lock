@@ -9,6 +9,13 @@ import cv2
 import os
 import time
 import numpy
+import socket
+
+port = 4210
+ip = "10.36.68.5"
+msg = "Message to send"
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
 # Load the cascade and facial recognition data
 data=pickle.loads(open("encodings.pickle","rb").read())
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -17,9 +24,10 @@ face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fronta
 vs= VideoStream(usePiCamera=True).start()
 writer=0
 time.sleep(2.0)
-# To use a video file as input 
+# To use a video file as input
 # cap = cv2.VideoCapture('filename.mp4')
 fps=FPS().start()
+Current_Time=time.clock()
 while True:
     # Read the frame
     snapshot=vs.read()
@@ -30,7 +38,6 @@ while True:
     # Detect the faces
     facebox = face_cascade.detectMultiScale(gray, 1.1, 4,minSize=(30,30))
     # Draw the rectangle around each face
-        
     boxes = [(y, x + w, y + h, x) for (x, y, w, h) in facebox]
    
     print(boxes)
@@ -38,18 +45,20 @@ while True:
     encodings = face_recognition.face_encodings(rgb, boxes)
     print(boxes)
     names = []
-    
+   
     for encoding in encodings:
-     print("Recognize step")
-     # attempt to match each face in the input image to our known
-     # encodings
-     matches = face_recognition.compare_faces(data["encodings"],encoding)
-     name = "Unknown"
+        print("Recognize step")
+        # attempt to match each face in the input image to our known
+        # encodings
+        matches = face_recognition.compare_faces(data["encodings"],encoding)
+        name = "Unknown"
         # check to see if we have found a match
-     if True in matches:
+        if True in matches:
             # find the indexes of all matched faces then initialize
             # dictionary to count the total number of times each face
             # was matched
+            sock.sendto(bytes(msg,"utf-8") , (ip, port))
+
             matchedIdxs = [i for (i, b) in enumerate(matches) if b]
             counts = {}
             # loop over the matched indexes and maintain a count for
@@ -60,15 +69,18 @@ while True:
                 # determine the recognized face with the largest number
                 # of votes (note: in the event of an unlikely tie Python
                 # will select first entry in the dictionary)
-                name = max(counts, key=counts.get)
-        # update the list of names
-    try:
-        names.append(name)
-    except:
-        pass
+                name = max(counts, key=counts.get)        
+        # update the list of names    
+        try:
+            names.append(name)
+        except:
+            pass
+       
+    name = "Blah"
     # loop over the facial embeddings
     # loop over the recognized faces
     for ((top, right, bottom, left), name) in zip(boxes, names):
+    #print(name)
         # draw the predicted face name on the image
         cv2.rectangle(snapshot, (left, top), (right, bottom),(0, 255, 0), 2)
         y = top - 15 if top - 15 > 15 else top + 15
@@ -76,6 +88,9 @@ while True:
                     0.75, (0, 255, 0), 2)
     # display the image to our screen
     cv2.imshow("Frame", snapshot)
+    print((time.clock()-Current_Time)//1)
+    if (name == "Unknown") and (((time.clock()-Current_Time)//1)%10)==0:
+        os.system("python3 slack_msg.py")
     key = cv2.waitKey(1) & 0xFF
     # if the `q` key was pressed, break from the loop
     if key == ord("q"):
